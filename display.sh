@@ -20,7 +20,8 @@ do
       if [ "$CURRENT" != "" ]
       then
         PREVIOUS=$CURRENT
-        $IMAGE_VIEWER "$CURRENT" &
+        $IMAGE_VIEWER "$CURRENT"
+        pwsh -NoLogo -NoProfile -C '. ~/custom-scripts/ssh.ps1;. ~/private-custom-scripts/cmus.ps1;Write-CmusSongInfo'
       else
         echo "::: NO COVER ART :::" 
         PREVIOUS=""
