@@ -42,7 +42,7 @@ try:
     if data.status == 'playing':
         if not path.exists(cover_dir):
             os.mkdir(cover_dir)
-        art_file = cover_dir + '/' + data.album.replace('/', '') + '_' + data.artist + '.jpg'
+        art_file = cover_dir + '/' + data.album.replace('/', '').replace('%', '') + '_' + data.artist + '.jpg'
 
         if not path.exists(art_file):
             subprocess.call(['ffmpeg', '-i', data.file, '-an', '-vcodec', 'copy', art_file])
