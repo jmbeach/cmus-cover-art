@@ -7,7 +7,25 @@ from functools import reduce
 import imghdr
 import traceback
 import eyed3
+import logging
+from logging.handlers import RotatingFileHandler
 
+# setup logging
+log = logging.getLogger('observer')
+log.setLevel(logging.DEBUG)
+# log to file
+home = os.getenv('HOME')
+fh = RotatingFileHandler(f'{home}/.config/cmus/cmus-cover-art/observer.log',
+    maxBytes=2000, backupCount=1)
+fh.setLevel(logging.DEBUG)
+# and log to stdout
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+ch.setFormatter(formatter)
+fh.setFormatter(formatter)
+log.addHandler(ch)
+log.addHandler(fh)
 
 class SongData(object):
     def __init__(self, song_status, file, artist, album, disc_number, track, title, date, duration):
@@ -41,10 +59,6 @@ def clean_string(s: str):
     cleaned: str = reduce(lambda a, b: f'{a}_{b}', re.findall(reg_clean, s))
     return cleaned
 
-home = os.environ.get('HOME')
-if home is None or home == '':
-    home = '/tmp'
-log_file = home + '/debug-cmus-cover-art.txt'
 try:
     cover_dir = sys.argv[1]
     data = get_song_data()
@@ -55,19 +69,25 @@ try:
         matching_files = [*filter(lambda x: x.startswith(art_file_name) ,os.listdir(cover_dir))]
         found_match = matching_files is not None and len(matching_files) > 0
         art_file = f'{cover_dir}/{matching_files[0]}' if found_match else f'{cover_dir}/{art_file_name}'
-        with open(log_file, 'a') as f:
-            f.write(str(f'art file is: {art_file}\n'))
+        log.debug(f'art file: {art_file}')
         if not path.exists(art_file):
-            img = eyed3.load(data.file).tag.images[0]
-            ext = img.mime_type.split("/")[1]
-            with open(f'{art_file}.{ext}', 'wb') as image_file:
-                image_file.write(img.image_data)
-                art_file = f'{art_file}.{ext}'
+            log.debug(f'data file: {data.file}')
+            meta = eyed3.load(data.file)
+            log.debug(f'metadata: {meta}')
+            if meta is not None and meta.tag is not None and meta.tag.images is not None and len(meta.tag.images) > 0:
+                img = meta.tag.images[0]
+                ext = img.mime_type.split("/")[1]
+                with open(f'{art_file}.{ext}', 'wb') as image_file:
+                    image_file.write(img.image_data)
+                    art_file = f'{art_file}.{ext}'
+            else:
+                art_file = f'{art_file}.jpg'
+                subprocess.call(['ffmpeg', '-i', data.file, '-an', '-vcodec', 'copy', art_file])
         with open(cover_dir + '/current.txt', 'w') as current_f:
             current_f.write(art_file)
 
 
 except Exception as err:
-    with open(log_file, 'a') as f:
-        tb = traceback.format_exc()
-        f.write(str(f'{err}\n{tb}\n'))
+    tb = traceback.format_exc()
+    log.error(f'{err}\n{tb}\n')
+    

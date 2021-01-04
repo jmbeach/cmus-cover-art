@@ -2,3 +2,7 @@ imgcat
 .cover
 
 .idea/
+
+*.log
+
+*.1
